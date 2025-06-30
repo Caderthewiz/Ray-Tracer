@@ -3,11 +3,11 @@
 
 #include "interval.h"
 #include "vec3.h"
-#include "math_util.h"
+#include "utility.h"
 
 using color = vec3;
 
-inline double linear_to_gamma(double linear_component) {
+inline double linear_to_gamma(double linear_component) { //Linear to Gamma space
 	if (linear_component > 0)
 		return std::sqrt(linear_component);
 
@@ -29,7 +29,6 @@ void write_color(std::ostream& out, color& pixel_color) {
 	int gbyte = int(256 * intensity.clamp(g));
 	int bbyte = int(256 * intensity.clamp(b));
 
-	//Write
 	out << rbyte << ' ' << gbyte << ' ' << bbyte << '\n';
 }
 

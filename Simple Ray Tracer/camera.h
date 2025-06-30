@@ -19,6 +19,7 @@ class camera {
 		double defocus_angle = 0;
 		double focus_dist = 10;
 
+		//Outputs color values to stream in PPM format
 		void render(const hittable& world) {
 			initialize();
 
@@ -28,13 +29,13 @@ class camera {
 				std::clog << "\rScanlines remaining: " << (image_height - j) << ' ' << std::flush;
 				for (int i = 0; i < image_width; i++) {
 					color pixel_color(0, 0, 0);
-					for (int sample = 0; sample < samples_per_pixel; sample++) {
+					for (int sample = 0; sample < samples_per_pixel; sample++) { //Antaliasing
 						ray r = get_ray(i, j);
 						pixel_color += ray_color(r, max_depth, world);
 					}
 
 					color scaled_color = pixel_samples_scale * pixel_color; //Temp
-					write_color(std::cout, scaled_color); // (pixel_samples_scale * pixel_color) complier error as second arg
+					write_color(std::cout, scaled_color); // (pixel_samples_scale * pixel_color) complier error as second arg?
 				}
 			}
 
@@ -52,6 +53,7 @@ class camera {
 		vec3   defocus_disk_u;
 		vec3   defocus_disk_v;
 
+		//Initiatlizes Camera
 		void initialize() {
 			image_height = int(image_width / aspect_ratio);
 			image_height = (image_height < 1) ? 1 : image_height;
@@ -60,24 +62,30 @@ class camera {
 
 			center = lookfrom;
 
+			//Viewport Calculations
 			auto theta = degrees_to_radians(vfov);
 			auto h = std::tan(theta / 2);
 			auto viewport_height = 2 * h * focus_dist;
 			auto viewport_width = viewport_height * (double(image_width) / image_height);
 
+			//Camera Basis Vectors
 			w = unit_vector(lookfrom - lookat);
 			u = unit_vector(cross(vup, w));
 			v = cross(w, u);
 
+			//Viewport Basis Vectors
 			auto viewport_u = viewport_width * u;
 			auto viewport_v = viewport_height * -v;
 
+			//Pixel Deleta Vectors
 			pixel_delta_u = viewport_u / image_width;
 			pixel_delta_v = viewport_v / image_height;
 
+			//Pixel 00 Location
 			auto viewport_upper_left = center - (focus_dist * w) - viewport_u / 2 - viewport_v / 2;
 			pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
+			//Defocus Blur
 			auto defocus_radius = focus_dist * std::tan(degrees_to_radians(defocus_angle / 2));
 			defocus_disk_u = u * defocus_radius;
 			defocus_disk_v = v * defocus_radius;
@@ -102,13 +110,14 @@ class camera {
 			return center + (p[0] * defocus_disk_u) + (p[1] * defocus_disk_v);
 		}
 
+		//Ray Color Alg
 		color ray_color(const ray& r, int depth, const hittable& world) const {
-			if (depth <= 0)
+			if (depth <= 0) //Ray Limit
 				return color(0, 0, 0);
 			
 			hit_record rec;
 
-			if (world.hit(r, interval(0.001, infinity), rec)) {
+			if (world.hit(r, interval(0.001, infinity), rec)) { //0.001 to avoid Shadow Acne
 				ray scattered;
 				color attenuation;
 				if (rec.mat->scatter(r, rec, attenuation, scattered))

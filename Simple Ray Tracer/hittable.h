@@ -1,7 +1,7 @@
 #ifndef HITTABLE_H
 #define HITTABLE_H
 
-#include "math_util.h"
+#include "utility.h"
 
 class material;
 
@@ -13,15 +13,16 @@ class hit_record {
 		double s;
 		bool front_face;
 
+		//Set the normal direction based on the ray direction (outside vs inside)
 		void set_face_normal(const ray& r, const vec3& outward_normal) {
-			front_face = dot(r.direction(), outward_normal) < 0;
+			front_face = dot(r.direction(), outward_normal) < 0; //True -> ray is outside, False -> ray is inside
 			normal = front_face ? outward_normal : -outward_normal;
 		}
 };
 
 class hittable {
 	public:
-		virtual ~hittable() = default;
+		virtual ~hittable() = default; //Deconstructor
 		virtual bool hit(const ray& r, interval ray_t, hit_record& rec) const = 0;
 };
 

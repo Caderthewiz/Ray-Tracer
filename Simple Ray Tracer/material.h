@@ -5,20 +5,24 @@
 
 class material {
 	public:
-		virtual ~material() = default;
+		virtual ~material() = default; //Deconstructor
 
 		virtual bool scatter(const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered) const {
 			return false;
 		}
 };
 
+//Diffuse Material
 class lambertian : public material {
 	public:
 		lambertian(const color& albedo) : albedo(albedo) {}
 
-		bool scatter(const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered) const override {
-			auto scatter_direction = rec.normal + random_unit_vector();
+		//Lambertian Scattering
 
+		bool scatter(const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered) const override {
+			auto scatter_direction = rec.normal + random_unit_vector(); //Scatter in a random direction based on the normal
+
+			//Catch degenerate scatter direction
 			if (scatter_direction.near_zero()) {
 				scatter_direction = rec.normal;
 			}
@@ -32,13 +36,14 @@ class lambertian : public material {
 		color albedo;
 };
 
+//Metal Material
 class metal : public material {
 	public:
 		metal(const color& albedo, double fuzz) : albedo(albedo), fuzz(fuzz < 1 ? fuzz : 1) {}
 
 		bool scatter(const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered) const override {
-			vec3 reflected = reflect(r_in.direction(), rec.normal);
-			reflected = unit_vector(reflected) + (fuzz * random_unit_vector());
+			vec3 reflected = reflect(r_in.direction(), rec.normal); //Reflect the incoming ray based on the normal
+			reflected = unit_vector(reflected) + (fuzz * random_unit_vector()); //Fuzz the reflection
 			scattered = ray(rec.p, reflected);
 			attenuation = albedo;
 			return (dot(scattered.direction(), rec.normal) > 0);
@@ -49,6 +54,7 @@ class metal : public material {
 		double fuzz;
 };
 
+//Dielectric Material (Glass)
 class dielectric : public material {
 	public:
 		dielectric(double refraction_index) : refraction_index(refraction_index) {}
@@ -58,6 +64,8 @@ class dielectric : public material {
 			double ri = rec.front_face ? (1.0 / refraction_index) : refraction_index;
 
 			vec3 unit_direction = unit_vector(r_in.direction());
+
+			//Total Internal Reflection Check
 			double cos_theta = std::fmin(dot(-unit_direction, rec.normal), 1.0);
 			double sin_theta = std::sqrt(1.0 - cos_theta * cos_theta);
 
@@ -76,6 +84,7 @@ class dielectric : public material {
 	private:
 		double refraction_index;
 
+		//Schlick's approximation for reflectance
 		static double reflectance(double cosine, double ref_idx) {
 			double r0 = (1 - ref_idx) / (1 + ref_idx);
 			r0 = r0 * r0;
