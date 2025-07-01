@@ -8,10 +8,12 @@
 class ray {
 	public:
 		ray() {}
-		ray(const point3& origin, const vec3& direction) : orig(origin), dir(direction) {}
+		ray(const point3& origin, const vec3& direction, double time) : orig(origin), dir(direction), tm(time) {}
+		ray(const point3& origin, const vec3& direction) : ray(origin, direction, 0) {}
 
 		const point3& origin() const { return orig; }
 		const vec3& direction() const { return dir; }
+		const double& time() const { return tm; }
 
 		point3 at(double s) const { // s -> scalar value
 			return orig + s * dir;
@@ -20,6 +22,7 @@ class ray {
 	private:
 		point3 orig; //A
 		vec3 dir; //b
+		double tm; //Time for motion blur
 };
 
 #endif
