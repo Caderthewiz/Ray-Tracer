@@ -14,5 +14,4 @@ The ray tracer implements anti-aliasing using a multi-sample technique to smooth
 <img width="600" height="600" alt="Cornell-Box" src="https://github.com/user-attachments/assets/6f19907f-df2b-4dee-8549-190a67f9b2be" />
 
 ## Credit
-This project is based on the educational book series by Peter Shirley, which provides a comprehensive guide to implementing a ray tracing engine. The principles outlined in the book are directly applied in this project, ensuring a strong foundation in the theory and practical application of ray tracing algorithms. <br>
-[_Ray Tracing in One Weekend_](https://raytracing.github.io/books/RayTracingInOneWeekend.html)
+This project is based on the educational book series by Peter Shirley, which provides a comprehensive guide to implementing a ray tracing engine. The principles outlined in the book are directly applied in this project, ensuring a strong foundation in the theory and practical application of ray tracing algorithms. [_Ray Tracing in One Weekend_](https://raytracing.github.io/books/RayTracingInOneWeekend.html)
