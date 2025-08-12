@@ -2,6 +2,7 @@
 #define CAMERA_H
 
 #include "hittable.h"
+#include "pdf.h"
 #include "material.h"
 
 class camera {
@@ -21,7 +22,7 @@ class camera {
 		double focus_dist = 10;
 
 		//Outputs color values to stream in PPM format
-		void render(const hittable& world) {
+		void render(const hittable& world, const hittable& lights) {
 			initialize();
 
 			std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
@@ -30,9 +31,11 @@ class camera {
 				std::clog << "\rScanlines remaining: " << (image_height - j) << ' ' << std::flush;
 				for (int i = 0; i < image_width; i++) {
 					color pixel_color(0, 0, 0);
-					for (int sample = 0; sample < samples_per_pixel; sample++) { //Antaliasing
-						ray r = get_ray(i, j);
-						pixel_color += ray_color(r, max_depth, world);
+					for (int s_j = 0; s_j < sqrt_spp; s_j++) { //Stratified
+						for (int s_i = 0; s_i < sqrt_spp; s_i++) {
+							ray r = get_ray(i, j, s_i, s_j);
+							pixel_color += ray_color(r, max_depth, world, lights);
+						}
 					}
 
 					color scaled_color = pixel_samples_scale * pixel_color; //Temp
@@ -46,6 +49,8 @@ class camera {
 	private:
 		int    image_height;
 		double pixel_samples_scale;
+		int sqrt_spp;
+		double recip_sqrt_spp;
 		point3 center;
 		point3 pixel00_loc;
 		vec3   pixel_delta_u;
@@ -59,7 +64,9 @@ class camera {
 			image_height = int(image_width / aspect_ratio);
 			image_height = (image_height < 1) ? 1 : image_height;
 
-			pixel_samples_scale = 1.0 / samples_per_pixel;
+			sqrt_spp = int(std::sqrt(samples_per_pixel));
+			pixel_samples_scale = 1.0 / (sqrt_spp * sqrt_spp);
+			recip_sqrt_spp = 1.0 / sqrt_spp;
 
 			center = lookfrom;
 
@@ -93,14 +100,21 @@ class camera {
 
 		}
 
-		ray get_ray(int i, int j) const {
-			auto offset = sample_square();
+		ray get_ray(int i, int j, int s_i, int s_j) const {
+			auto offset = sample_square_stratified(s_i, s_j);
 			auto pixel_sample = pixel00_loc + ((i + offset.x()) * pixel_delta_u) + ((j + offset.y()) * pixel_delta_v);
 			auto ray_origin = (defocus_angle <= 0) ? center : defocus_disk_sample();
 			auto ray_direction = pixel_sample - ray_origin;
 			auto ray_time = random_double(); //For Motion Blur
 
 			return ray(ray_origin, ray_direction, ray_time);
+		}
+
+		vec3 sample_square_stratified(int s_i, int s_j) const {
+			auto px = ((s_i + random_double()) * recip_sqrt_spp) - 0.5;
+			auto py = ((s_j + random_double()) * recip_sqrt_spp) - 0.5;
+
+			return vec3(px, py, 0);
 		}
 
 		vec3 sample_square() const {
@@ -113,23 +127,39 @@ class camera {
 		}
 
 		//Ray Color Alg
-		color ray_color(const ray& r, int depth, const hittable& world) const {
-			if (depth <= 0) //Ray Limit
+		color ray_color(const ray& r, int depth, const hittable& world, const hittable& lights)
+			const {
+			// Ray Bounce Limit
+			if (depth <= 0)
 				return color(0, 0, 0);
-			
+
 			hit_record rec;
 
+			// No intersect
 			if (!world.hit(r, interval(0.001, infinity), rec))
 				return background;
 
-			ray scattered;
-			color attenuation;
-			color color_from_emission = rec.mat->emitted(rec.u, rec.v, rec.p);
+			scatter_record srec;
+			color color_from_emission = rec.mat->emitted(r, rec, rec.u, rec.v, rec.p);
 
-			if (!rec.mat->scatter(r, rec, attenuation, scattered))
+			if (!rec.mat->scatter(r, rec, srec))
 				return color_from_emission;
 
-			color color_from_scatter = attenuation * ray_color(scattered, depth - 1, world);
+			if (srec.skip_pdf) {
+				return srec.attenuation * ray_color(srec.skip_pdf_ray, depth - 1, world, lights);
+			}
+
+			auto light_ptr = make_shared<hittable_pdf>(lights, rec.p);
+			mixture_pdf p(light_ptr, srec.pdf_ptr);
+
+			ray scattered = ray(rec.p, p.generate(), r.time());
+			auto pdf_value = p.value(scattered.direction());
+
+			double scattering_pdf = rec.mat->scattering_pdf(r, rec, scattered);
+
+			color sample_color = ray_color(scattered, depth - 1, world, lights);
+			color color_from_scatter =
+				(srec.attenuation * scattering_pdf * sample_color) / pdf_value;
 
 			return color_from_emission + color_from_scatter;
 		}

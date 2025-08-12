@@ -4,8 +4,6 @@
 #include "utility.h"
 
 //Axis-Aligned Bounding Box
-
-//ANALYZE
 class aabb {
 	public:
 		interval x, y, z;
